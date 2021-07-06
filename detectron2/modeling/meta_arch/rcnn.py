@@ -17,6 +17,7 @@ from ..proposal_generator import build_proposal_generator
 from ..roi_heads import build_roi_heads
 from .build import META_ARCH_REGISTRY
 
+
 __all__ = ["GeneralizedRCNN", "ProposalNetwork"]
 
 
@@ -193,8 +194,18 @@ class GeneralizedRCNN(nn.Module):
         """
         assert not self.training
 
-        images = self.preprocess_image(batched_inputs)
-        features = self.backbone(images.tensor)
+        # Following code modified from:
+        #   images = self.preprocess_image(batched_inputs) # original outer function
+        #   images = [batched_inputs]
+        #   images = ImageList.from_tensors(images, self.backbone.size_divisibility)
+
+        # import pdb; pdb.set_trace()
+
+        batched_inputs = batched_inputs.reshape(1, batched_inputs.shape[0], batched_inputs.shape[1], batched_inputs.shape[2])
+
+        features = self.backbone(batched_inputs) # images.tensor == batched_inputs
+
+        return features
 
         if detected_instances is None:
             if self.proposal_generator:
@@ -203,8 +214,8 @@ class GeneralizedRCNN(nn.Module):
                 assert "proposals" in batched_inputs[0]
                 proposals = [x["proposals"].to(self.device) for x in batched_inputs]
 
-            # TODO(drobinson): Handle "aten_op 'ImplicitTensorToNum' parse failed(unsupported)"
-            # import pdb; pdb.set_trace()
+            # TODO(drobinson): Handle "aten_op 'ImplicitTensorToNum' parse failed(unsupported)" in self.proposal_generator
+            import pdb; pdb.set_trace()
             return [proposal.objectness_logits for proposal in proposals]
 
             results, _ = self.roi_heads(images, features, proposals, None)
@@ -216,30 +227,16 @@ class GeneralizedRCNN(nn.Module):
         if do_postprocess:
             return GeneralizedRCNN._postprocess(results, batched_inputs, images.image_sizes)
         else:
-            # import pdb; pdb.set_trace()
-            # return results
-
-            # Get area of boxes - just a test!
-            return [result.pred_boxes.area() for result in results if result.has("pred_boxes")]
+            return results
 
 
-    def preprocess_image(self, image):
-        # TODO: drobinson: do this OUTSIDE network!
+    def preprocess_image(self, batched_inputs):
         """
         Normalize, pad and batch the input images.
         """
-        # images = [x["image"].to(self.device) for x in batched_inputs]
-        # images = [(x - self.pixel_mean) / self.pixel_std for x in images]
-        # images = ImageList.from_tensors(images, self.backbone.size_divisibility)
-
-        # import pdb; pdb.set_trace()
-        # image = batched_inputs.to(self.device)
-        pixel_mean = torch.tensor([[[103.5300]], [[116.2800]], [[123.6750]]], device='cuda:0')
-        pixel_std = torch.tensor([[[1. / 1.]], [[1. / 1.]], [[1. / 1.]]], device='cuda:0')
-        image = (image - pixel_mean) * pixel_std
-        images = [image]
+        images = [x["image"].to(self.device) for x in batched_inputs]
+        images = [(x - self.pixel_mean) / self.pixel_std for x in images]
         images = ImageList.from_tensors(images, self.backbone.size_divisibility)
-
         return images
 
     @staticmethod

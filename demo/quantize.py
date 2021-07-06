@@ -15,6 +15,7 @@ from detectron2.utils.logger import setup_logger
 
 # From Vitis AI
 import torch
+import numpy as np
 from pytorch_nndct.apis import torch_quantizer
 
 
@@ -133,12 +134,9 @@ if __name__ == "__main__":
 
     # Quantize
     quant_mode = 'calib'
-    # quant_mode = 'test'
+    quant_mode = 'test'
     channels = 3
-
-    # height = 600
-    # width = 960
-    height = 300
+    height = 320
     width = 480
 
     batched_inputs = torch.randn([channels, height, width])
@@ -165,12 +163,17 @@ if __name__ == "__main__":
                         # whether the model expects BGR inputs or RGB
                         image = image[:, :, ::-1]
                     height, width = image.shape[:2]
-                    image = torch.as_tensor(image.astype("float32").transpose(2, 0, 1))
+
+                    image = image.astype("float32").transpose(2, 0, 1)
+
+                    # Normalize - Vitis AI Quantizer doesn't like doing this
+                    image = image.reshape(3, height * width)
+                    image -= np.array(cfg.MODEL.PIXEL_MEAN).reshape(3, 1)
+                    image /= np.array(cfg.MODEL.PIXEL_STD).reshape(3, 1)
+                    image = image.reshape(3, height, width)
 
                     # Convert to device
-                    image = image.to(device)
-
-                    # import pdb; pdb.set_trace()
+                    image = torch.as_tensor(image).to(device)
 
                     start_time = time.time()
 

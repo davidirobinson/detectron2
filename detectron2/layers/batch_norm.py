@@ -47,25 +47,25 @@ class FrozenBatchNorm2d(nn.Module):
 
 
     def forward(self, x):
-        # if x.requires_grad:
-        if True:
+        if False: # x.requires_grad:
             self.running_mean = torch.zeros(self.num_features).cuda()
             self.running_var = (torch.ones(self.num_features) - self.eps).cuda()
             self.weight = torch.ones(self.num_features).cuda()
             self.bias = torch.zeros(self.num_features).cuda()
 
-            # to_sqrt = (self.running_var + self.eps).cpu().numpy()
-            # sqrted = np.sqrt(to_sqrt)
-            # scale = self.weight * 1 / torch.as_tensor(np.sqrt(to_sqrt).astype("float32")).cuda()
+            to_sqrt = (self.running_var + self.eps).cpu().numpy()
+            sqrted = np.sqrt(to_sqrt)
+            scale = self.weight * 1 / torch.as_tensor(np.sqrt(to_sqrt).astype("float32")).cuda()
 
             # When gradients are needed, F.batch_norm will use extra memory
             # because its backward op computes gradients for weight/bias as well.
-            scale = self.weight * (self.running_var + self.eps).rsqrt()
+            # scale = self.weight * (self.running_var + self.eps).rsqrt()
             bias = self.bias - self.running_mean * scale
             scale = scale.reshape(1, -1, 1, 1)
             bias = bias.reshape(1, -1, 1, 1)
             return x * scale + bias
         else:
+
             # When gradients are not needed, F.batch_norm is a single fused op
             # and provide more optimization opportunities.
             return F.batch_norm(
