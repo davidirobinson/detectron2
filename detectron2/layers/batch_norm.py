@@ -10,6 +10,9 @@ from detectron2.utils import comm, env
 
 from .wrappers import BatchNorm2d
 
+# Temporary fix!
+import numpy as np
+
 
 class FrozenBatchNorm2d(nn.Module):
     """
@@ -42,8 +45,19 @@ class FrozenBatchNorm2d(nn.Module):
         self.register_buffer("running_mean", torch.zeros(num_features))
         self.register_buffer("running_var", torch.ones(num_features) - eps)
 
+
     def forward(self, x):
-        if x.requires_grad:
+        # if x.requires_grad:
+        if True:
+            self.running_mean = torch.zeros(self.num_features).cuda()
+            self.running_var = (torch.ones(self.num_features) - self.eps).cuda()
+            self.weight = torch.ones(self.num_features).cuda()
+            self.bias = torch.zeros(self.num_features).cuda()
+
+            # to_sqrt = (self.running_var + self.eps).cpu().numpy()
+            # sqrted = np.sqrt(to_sqrt)
+            # scale = self.weight * 1 / torch.as_tensor(np.sqrt(to_sqrt).astype("float32")).cuda()
+
             # When gradients are needed, F.batch_norm will use extra memory
             # because its backward op computes gradients for weight/bias as well.
             scale = self.weight * (self.running_var + self.eps).rsqrt()

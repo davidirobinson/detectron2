@@ -174,7 +174,7 @@ class GeneralizedRCNN(nn.Module):
         losses.update(proposal_losses)
         return losses
 
-    def inference(self, batched_inputs, detected_instances=None, do_postprocess=True):
+    def inference(self, batched_inputs, detected_instances=None, do_postprocess=False):
         """
         Run inference on the given inputs.
 
@@ -203,7 +203,12 @@ class GeneralizedRCNN(nn.Module):
                 assert "proposals" in batched_inputs[0]
                 proposals = [x["proposals"].to(self.device) for x in batched_inputs]
 
+            # TODO(drobinson): Handle "aten_op 'ImplicitTensorToNum' parse failed(unsupported)"
+            # import pdb; pdb.set_trace()
+            return [proposal.objectness_logits for proposal in proposals]
+
             results, _ = self.roi_heads(images, features, proposals, None)
+
         else:
             detected_instances = [x.to(self.device) for x in detected_instances]
             results = self.roi_heads.forward_with_given_boxes(features, detected_instances)
@@ -211,15 +216,30 @@ class GeneralizedRCNN(nn.Module):
         if do_postprocess:
             return GeneralizedRCNN._postprocess(results, batched_inputs, images.image_sizes)
         else:
-            return results
+            # import pdb; pdb.set_trace()
+            # return results
 
-    def preprocess_image(self, batched_inputs):
+            # Get area of boxes - just a test!
+            return [result.pred_boxes.area() for result in results if result.has("pred_boxes")]
+
+
+    def preprocess_image(self, image):
+        # TODO: drobinson: do this OUTSIDE network!
         """
         Normalize, pad and batch the input images.
         """
-        images = [x["image"].to(self.device) for x in batched_inputs]
-        images = [(x - self.pixel_mean) / self.pixel_std for x in images]
+        # images = [x["image"].to(self.device) for x in batched_inputs]
+        # images = [(x - self.pixel_mean) / self.pixel_std for x in images]
+        # images = ImageList.from_tensors(images, self.backbone.size_divisibility)
+
+        # import pdb; pdb.set_trace()
+        # image = batched_inputs.to(self.device)
+        pixel_mean = torch.tensor([[[103.5300]], [[116.2800]], [[123.6750]]], device='cuda:0')
+        pixel_std = torch.tensor([[[1. / 1.]], [[1. / 1.]], [[1. / 1.]]], device='cuda:0')
+        image = (image - pixel_mean) * pixel_std
+        images = [image]
         images = ImageList.from_tensors(images, self.backbone.size_divisibility)
+
         return images
 
     @staticmethod
@@ -227,6 +247,7 @@ class GeneralizedRCNN(nn.Module):
         """
         Rescale the output instances to the target size.
         """
+
         # note: private function; subject to changes
         processed_results = []
         for results_per_image, input_per_image, image_size in zip(
