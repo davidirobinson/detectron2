@@ -70,32 +70,27 @@ class ImageList(object):
         Returns:
             an `ImageList`.
         """
-        # assert len(tensors) > 0
-        # assert isinstance(tensors, (tuple, list))
-        # for t in tensors:
-        #     assert isinstance(t, torch.Tensor), type(t)
-        #     assert t.shape[1:-2] == tensors[0].shape[1:-2], t.shape
-        # # per dimension maximum (H, W) or (C_1, ..., C_K, H, W) where K >= 1 among all tensors
-
-        # max_size = (
-        #     # In tracing mode, x.shape[i] is Tensor, and should not be converted
-        #     # to int: this will cause the traced graph to have hard-coded shapes.
-        #     # Instead we should make max_size a Tensor that depends on these tensors.
-        #     # Using torch.stack twice seems to be the best way to convert
-        #     # list[list[ScalarTensor]] to a Tensor
-        #     torch.stack(
-        #         [
-        #             torch.stack([torch.as_tensor(dim) for dim in size])
-        #             for size in [tuple(img.shape) for img in tensors]
-        #         ]
-        #     )
-        #     .max(0)
-        #     .values
-        # )
-
-        # # assume only 1 input!
-        # assert len(tensors) == 1
-        max_size = torch.tensor(tensors[0].shape)
+        assert len(tensors) > 0
+        assert isinstance(tensors, (tuple, list))
+        for t in tensors:
+            assert isinstance(t, torch.Tensor), type(t)
+            assert t.shape[1:-2] == tensors[0].shape[1:-2], t.shape
+        # per dimension maximum (H, W) or (C_1, ..., C_K, H, W) where K >= 1 among all tensors
+        max_size = (
+            # In tracing mode, x.shape[i] is Tensor, and should not be converted
+            # to int: this will cause the traced graph to have hard-coded shapes.
+            # Instead we should make max_size a Tensor that depends on these tensors.
+            # Using torch.stack twice seems to be the best way to convert
+            # list[list[ScalarTensor]] to a Tensor
+            torch.stack(
+                [
+                    torch.stack([torch.as_tensor(dim) for dim in size])
+                    for size in [tuple(img.shape) for img in tensors]
+                ]
+            )
+            .max(0)
+            .values
+        )
 
         if size_divisibility > 1:
             stride = size_divisibility
@@ -104,25 +99,21 @@ class ImageList(object):
 
         image_sizes = [tuple(im.shape[-2:]) for im in tensors]
 
-        # if len(tensors) == 1:
-        # This seems slightly (2%) faster.
-        # TODO: check whether it's faster for multiple images as well
-        image_size = image_sizes[0]
-        padding_size = [0, max_size[-1] - image_size[1], 0, max_size[-2] - image_size[0]]
-        if all(x == 0 for x in padding_size):  # https://github.com/pytorch/pytorch/issues/31734
-            batched_imgs = tensors[0].unsqueeze(0)
+        if len(tensors) == 1:
+            # This seems slightly (2%) faster.
+            # TODO: check whether it's faster for multiple images as well
+            image_size = image_sizes[0]
+            padding_size = [0, max_size[-1] - image_size[1], 0, max_size[-2] - image_size[0]]
+            if all(x == 0 for x in padding_size):  # https://github.com/pytorch/pytorch/issues/31734
+                batched_imgs = tensors[0].unsqueeze(0)
+            else:
+                padded = F.pad(tensors[0], padding_size, value=pad_value)
+                batched_imgs = padded.unsqueeze_(0)
         else:
-            padded = F.pad(tensors[0], padding_size, value=pad_value)
-
-            # In-place unsqueeze_ not supported by vitis quantize
-            padded = padded.reshape(1, padded.shape[0], padded.shape[1], padded.shape[2]) # padded.unsqueeze(0)
-            batched_imgs = padded
-            # batched_imgs = padded.unsqueeze_(0)
-        # else:
-        #     # max_size can be a tensor in tracing mode, therefore use tuple()
-        #     batch_shape = (len(tensors),) + tuple(max_size)
-        #     batched_imgs = tensors[0].new_full(batch_shape, pad_value)
-        #     for img, pad_img in zip(tensors, batched_imgs):
-        #         pad_img[..., : img.shape[-2], : img.shape[-1]].copy_(img)
+            # max_size can be a tensor in tracing mode, therefore use tuple()
+            batch_shape = (len(tensors),) + tuple(max_size)
+            batched_imgs = tensors[0].new_full(batch_shape, pad_value)
+            for img, pad_img in zip(tensors, batched_imgs):
+                pad_img[..., : img.shape[-2], : img.shape[-1]].copy_(img)
 
         return ImageList(batched_imgs.contiguous(), image_sizes)
