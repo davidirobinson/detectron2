@@ -108,9 +108,6 @@ if __name__ == "__main__":
 
     cfg = setup_cfg(args)
 
-    # Setup model
-    predictor = DefaultPredictor(cfg)
-
     # # Do inference
     # if args.input:
     #     if len(args.input) == 1:
@@ -132,61 +129,65 @@ if __name__ == "__main__":
     #             )
     #         )
 
-    # Quantize
-    quant_mode = 'calib'
-    quant_mode = 'test'
-    channels = 3
-    height = 320
-    width = 480
+    def run_quantizer(cfg, quant_mode):
+        # Setup model
+        predictor = DefaultPredictor(cfg)
 
-    batched_inputs = torch.randn([channels, height, width])
+        channels = 3
+        height = 320
+        width = 480
 
-    quantizer = torch_quantizer(
-        quant_mode, predictor.model, batched_inputs, output_dir="quant_model/")
-    quantized_model = quantizer.quant_model
+        batched_inputs = torch.randn([channels, height, width])
 
-    # Evaluate / Test
-    def test(model, device, width, height):
-        if args.input:
-            if len(args.input) == 1:
-                args.input = glob.glob(os.path.expanduser(args.input[0]))
-                assert args.input, "The input path(s) was not found"
+        quantizer = torch_quantizer(
+            quant_mode, predictor.model, batched_inputs, output_dir="quant_model/")
+        quantized_model = quantizer.quant_model
 
-            model.eval()
-            with torch.no_grad():
-                for path in tqdm.tqdm(args.input, disable=not args.output):
-                    # use PIL, to be consistent with evaluation
-                    image = read_image(path, width, height, format="BGR")
+        # Evaluate / Test
+        def test(model, device, width, height):
+            if args.input:
+                if len(args.input) == 1:
+                    args.input = glob.glob(os.path.expanduser(args.input[0]))
+                    assert args.input, "The input path(s) was not found"
 
-                    # Apply pre-processing to image.
-                    if cfg.INPUT.FORMAT == "RGB":
-                        # whether the model expects BGR inputs or RGB
-                        image = image[:, :, ::-1]
-                    height, width = image.shape[:2]
+                model.eval()
+                with torch.no_grad():
+                    for path in args.input:
+                        # use PIL, to be consistent with evaluation
+                        image = read_image(path, width, height, format="BGR")
 
-                    image = image.astype("float32").transpose(2, 0, 1)
+                        # Apply pre-processing to image.
+                        if cfg.INPUT.FORMAT == "RGB":
+                            # whether the model expects BGR inputs or RGB
+                            image = image[:, :, ::-1]
+                        height, width = image.shape[:2]
 
-                    # Normalize - Vitis AI Quantizer doesn't like doing this
-                    image = image.reshape(3, height * width)
-                    image -= np.array(cfg.MODEL.PIXEL_MEAN).reshape(3, 1)
-                    image /= np.array(cfg.MODEL.PIXEL_STD).reshape(3, 1)
-                    image = image.reshape(3, height, width)
+                        image = image.astype("float32").transpose(2, 0, 1)
 
-                    # Convert to device
-                    image = torch.as_tensor(image).to(device)
+                        # Normalize - Vitis AI Quantizer doesn't like doing this
+                        image = image.reshape(3, height * width)
+                        image -= np.array(cfg.MODEL.PIXEL_MEAN).reshape(3, 1)
+                        image /= np.array(cfg.MODEL.PIXEL_STD).reshape(3, 1)
+                        image = image.reshape(3, height, width)
 
-                    start_time = time.time()
+                        # Convert to device
+                        image = torch.as_tensor(image).to(device)
 
-                    og_result = predictor.model(image)
-                    result = model(image)
+                        start_time = time.time()
 
-                    print("in ", time.time() - start_time, "s")
+                        og_result = predictor.model(image)
+                        result = model(image)
+
+                        print("elapsed ", time.time() - start_time, "s")
 
 
-    test(quantized_model, torch.device('cuda:0'), width, height)
+        test(quantized_model, torch.device('cuda:0'), width, height)
 
-    # export config
-    if quant_mode == 'calib':
-        quantizer.export_quant_config()
-    if quant_mode == 'test':
-        quantizer.export_xmodel(deploy_check=False, output_dir="quant_model/")
+        # export config
+        if quant_mode == 'calib':
+            quantizer.export_quant_config()
+        if quant_mode == 'test':
+            quantizer.export_xmodel(deploy_check=False, output_dir="quant_model/")
+
+    run_quantizer(cfg, 'calib')
+    run_quantizer(cfg, 'test')
