@@ -3,6 +3,7 @@ import math
 import fvcore.nn.weight_init as weight_init
 import torch.nn.functional as F
 from torch import nn
+import torch
 
 from detectron2.layers import Conv2d, ShapeSpec, get_norm
 
@@ -121,16 +122,24 @@ class FPN(Backbone):
         """
         # Reverse feature maps into top-down order (from low to high resolution)
         bottom_up_features = self.bottom_up(x)
+
         x = [bottom_up_features[f] for f in self.in_features[::-1]]
         results = []
         prev_features = self.lateral_convs[0](x[0])
         results.append(self.output_convs[0](prev_features))
-        for features, lateral_conv, output_conv in zip(
-            x[1:], self.lateral_convs[1:], self.output_convs[1:]
-        ):
-            top_down_features = F.interpolate(prev_features, scale_factor=2, mode="nearest")
+
+        for features, lateral_conv, output_conv in zip(x[1:], self.lateral_convs[1:], self.output_convs[1:]):
+
+            # TODO(drobinson): xmodel doesn't like this interpolate function
+            # top_down_features = F.interpolate(prev_features, scale_factor=2, mode="nearest")
+
+            interp_shape = (prev_features.shape[2] * 2, prev_features.shape[3] * 2)
+            top_down_features = F.interpolate(prev_features, size=interp_shape, mode="nearest")
+
             lateral_features = lateral_conv(features)
-            prev_features = lateral_features + top_down_features
+
+            prev_features = lateral_features # + top_down_features
+
             if self._fuse_type == "avg":
                 prev_features /= 2
             results.insert(0, output_conv(prev_features))
