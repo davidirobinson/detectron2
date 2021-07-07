@@ -48,7 +48,7 @@ class FrozenBatchNorm2d(nn.Module):
 
     def forward(self, x):
         # TODO(drobinson): deal with this
-        if False: x.requires_grad:
+        if False: # x.requires_grad:
             self.running_mean = torch.zeros(self.num_features).cuda()
             self.running_var = (torch.ones(self.num_features) - self.eps).cuda()
             self.weight = torch.ones(self.num_features).cuda()
