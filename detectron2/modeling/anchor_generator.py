@@ -35,9 +35,14 @@ class BufferList(nn.Module):
 
 
 def _create_grid_offsets(size: List[int], stride: int, offset: float, device: torch.device):
-    # TODO(drobinson)
+    # TODO(drobinson): aten_op 'ImplicitTensorToNum' parse failed(unsupported)
+
+    empt = torch.empty(size[0] * size[1], dtype=torch.float32, device=device)
+    return empt, empt
 
     grid_height, grid_width = size
+
+    # ?
     shifts_x = torch.arange(
         offset * stride, grid_width * stride, step=stride, dtype=torch.float32, device=device
     )
@@ -45,6 +50,7 @@ def _create_grid_offsets(size: List[int], stride: int, offset: float, device: to
         offset * stride, grid_height * stride, step=stride, dtype=torch.float32, device=device
     )
 
+    # ?
     shift_y, shift_x = torch.meshgrid(shifts_y, shifts_x)
     shift_x = shift_x.reshape(-1)
     shift_y = shift_y.reshape(-1)
@@ -242,10 +248,7 @@ class DefaultAnchorGenerator(nn.Module):
         """
 
         grid_sizes = [feature_map.shape[-2:] for feature_map in features]
-
-        # TODO(drobinson): aten_op 'ImplicitTensorToNum' parse failed(unsupported)
         anchors_over_all_feature_maps = self._grid_anchors(grid_sizes)
-        return anchors_over_all_feature_maps
         return [Boxes(x) for x in anchors_over_all_feature_maps]
 
 
@@ -337,7 +340,8 @@ class RotatedAnchorGenerator(nn.Module):
         anchors = []
         for size, stride, base_anchors in zip(grid_sizes, self.strides, self.cell_anchors):
             shift_x, shift_y = _create_grid_offsets(size, stride, self.offset, base_anchors.device)
-            zeros = torch.zeros_like(shift_x)
+            # zeros = torch.zeros_like(shift_x)
+            zeros = torch.zeros(shift_x.size())
             shifts = torch.stack((shift_x, shift_y, zeros, zeros, zeros), dim=1)
 
             anchors.append((shifts.view(-1, 1, 5) + base_anchors.view(1, -1, 5)).reshape(-1, 5))

@@ -203,7 +203,6 @@ class GeneralizedRCNN(nn.Module):
             1, batched_inputs.shape[0], batched_inputs.shape[1], batched_inputs.shape[2])
 
         features = self.backbone(batched_inputs) # NOTE: images.tensor == batched_inputs
-        return features
 
         if detected_instances is None:
             if self.proposal_generator:
@@ -213,11 +212,7 @@ class GeneralizedRCNN(nn.Module):
                 proposals = [x["proposals"].to(self.device) for x in batched_inputs]
 
             # import pdb; pdb.set_trace()
-            # return [proposal.area() for proposal in proposals]
-            return proposals
-
-            # TODO(drobinson): Handle "aten_op 'ImplicitTensorToNum' parse failed(unsupported)" in self.proposal_generator
-            return [proposal.objectness_logits for proposal in proposals]
+            return [proposal.objectness_logits for proposal in proposals[0]]
 
             results, _ = self.roi_heads(images, features, proposals, None)
 

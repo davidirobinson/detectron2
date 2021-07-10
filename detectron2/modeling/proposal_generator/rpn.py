@@ -315,7 +315,8 @@ class RPN(nn.Module):
 
             if len(gt_boxes_i) == 0:
                 # These values won't be used anyway since the anchor is labeled as background
-                matched_gt_boxes_i = torch.zeros_like(anchors.tensor)
+                # matched_gt_boxes_i = torch.zeros_like(anchors.tensor)
+                matched_gt_boxes_i = torch.zeros(anchors.tensor.size())
             else:
                 # TODO wasted indexing computation for ignored boxes
                 matched_gt_boxes_i = gt_boxes_i[matched_idxs].tensor
@@ -421,9 +422,7 @@ class RPN(nn.Module):
         """
         features = [features[f] for f in self.in_features]
 
-        # TODO(drobinson): aten_op 'ImplicitTensorToNum' parse failed(unsupported)
         anchors = self.anchor_generator(features)
-        return anchors
 
         pred_objectness_logits, pred_anchor_deltas = self.rpn_head(features)
         # Transpose the Hi*Wi*A dimension to the middle:
@@ -449,7 +448,7 @@ class RPN(nn.Module):
         else:
             losses = {}
 
-        # TODO(drobinson): support only one image
+        # NOTE(drobinson): support only one image
         image_sizes = [(images.shape[2].item(), images.shape[3].item())]
         proposals = self.predict_proposals(
             anchors, pred_objectness_logits, pred_anchor_deltas, image_sizes)
