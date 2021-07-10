@@ -35,6 +35,8 @@ class BufferList(nn.Module):
 
 
 def _create_grid_offsets(size: List[int], stride: int, offset: float, device: torch.device):
+    # TODO(drobinson)
+
     grid_height, grid_width = size
     shifts_x = torch.arange(
         offset * stride, grid_width * stride, step=stride, dtype=torch.float32, device=device
@@ -46,6 +48,9 @@ def _create_grid_offsets(size: List[int], stride: int, offset: float, device: to
     shift_y, shift_x = torch.meshgrid(shifts_y, shifts_x)
     shift_x = shift_x.reshape(-1)
     shift_y = shift_y.reshape(-1)
+
+    import pdb; pdb.set_trace()
+
     return shift_x, shift_y
 
 
@@ -131,7 +136,8 @@ class DefaultAnchorGenerator(nn.Module):
         cell_anchors = [
             self.generate_cell_anchors(s, a).float() for s, a in zip(sizes, aspect_ratios)
         ]
-        return BufferList(cell_anchors)
+        # return BufferList(cell_anchors)
+        return cell_anchors
 
     @property
     def num_cell_anchors(self):
@@ -160,8 +166,23 @@ class DefaultAnchorGenerator(nn.Module):
             list[Tensor]: #featuremap tensors, each is (#locations x #cell_anchors) x 4
         """
         anchors = []
+
+        # TODO(drobinson)
         # buffers() not supported by torchscript. use named_buffers() instead
-        buffers: List[torch.Tensor] = [x[1] for x in self.cell_anchors.named_buffers()]
+        # buffers: List[torch.Tensor] = [x[1] for x in self.cell_anchors.named_buffers()]
+
+        buffers = [torch.tensor([[-22.6274, -11.3137,  22.6274,  11.3137],
+        [-16.0000, -16.0000,  16.0000,  16.0000],
+        [-11.3137, -22.6274,  11.3137,  22.6274]], device='cuda:0'), torch.tensor([[-45.2548, -22.6274,  45.2548,  22.6274],
+        [-32.0000, -32.0000,  32.0000,  32.0000],
+        [-22.6274, -45.2548,  22.6274,  45.2548]], device='cuda:0'), torch.tensor([[-90.5097, -45.2548,  90.5097,  45.2548],
+        [-64.0000, -64.0000,  64.0000,  64.0000],
+        [-45.2548, -90.5097,  45.2548,  90.5097]], device='cuda:0'), torch.tensor([[-181.0193,  -90.5097,  181.0193,   90.5097],
+        [-128.0000, -128.0000,  128.0000,  128.0000],
+        [ -90.5097, -181.0193,   90.5097,  181.0193]], device='cuda:0'), torch.tensor([[-362.0387, -181.0193,  362.0387,  181.0193],
+        [-256.0000, -256.0000,  256.0000,  256.0000],
+        [-181.0193, -362.0387,  181.0193,  362.0387]], device='cuda:0')]
+
         for size, stride, base_anchors in zip(grid_sizes, self.strides, buffers):
             shift_x, shift_y = _create_grid_offsets(size, stride, self.offset, base_anchors.device)
             shifts = torch.stack((shift_x, shift_y, shift_x, shift_y), dim=1)
@@ -169,6 +190,7 @@ class DefaultAnchorGenerator(nn.Module):
             anchors.append((shifts.view(-1, 1, 4) + base_anchors.view(1, -1, 4)).reshape(-1, 4))
 
         return anchors
+
 
     def generate_cell_anchors(self, sizes=(32, 64, 128, 256, 512), aspect_ratios=(0.5, 1, 2)):
         """
@@ -218,8 +240,12 @@ class DefaultAnchorGenerator(nn.Module):
                 The number of anchors of each feature map is Hi x Wi x num_cell_anchors,
                 where Hi, Wi are resolution of the feature map divided by anchor stride.
         """
+
         grid_sizes = [feature_map.shape[-2:] for feature_map in features]
+
+        # TODO(drobinson): aten_op 'ImplicitTensorToNum' parse failed(unsupported)
         anchors_over_all_feature_maps = self._grid_anchors(grid_sizes)
+        return anchors_over_all_feature_maps
         return [Boxes(x) for x in anchors_over_all_feature_maps]
 
 

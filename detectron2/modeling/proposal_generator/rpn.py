@@ -401,7 +401,7 @@ class RPN(nn.Module):
 
     def forward(
         self,
-        images: ImageList,
+        images: torch.Tensor,
         features: Dict[str, torch.Tensor],
         gt_instances: Optional[List[Instances]] = None,
     ):
@@ -420,7 +420,10 @@ class RPN(nn.Module):
             loss: dict[Tensor] or None
         """
         features = [features[f] for f in self.in_features]
+
+        # TODO(drobinson): aten_op 'ImplicitTensorToNum' parse failed(unsupported)
         anchors = self.anchor_generator(features)
+        return anchors
 
         pred_objectness_logits, pred_anchor_deltas = self.rpn_head(features)
         # Transpose the Hi*Wi*A dimension to the middle:
@@ -445,9 +448,11 @@ class RPN(nn.Module):
             )
         else:
             losses = {}
+
+        # TODO(drobinson): support only one image
+        image_sizes = [(images.shape[2].item(), images.shape[3].item())]
         proposals = self.predict_proposals(
-            anchors, pred_objectness_logits, pred_anchor_deltas, images.image_sizes
-        )
+            anchors, pred_objectness_logits, pred_anchor_deltas, image_sizes)
         return proposals, losses
 
     # TODO: use torch.no_grad when torchscript supports it.

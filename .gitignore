@@ -1,3 +1,8 @@
+compiled_model/
+quant_model/
+target/
+environment.yml
+
 # output dir
 output
 instant_test_output
