@@ -102,7 +102,7 @@ class Box2BoxTransform(object):
         pred_w = torch.exp(dw) * widths[:, None]
         pred_h = torch.exp(dh) * heights[:, None]
 
-        pred_boxes = torch.zeros_like(deltas)
+        pred_boxes = torch.zeros(deltas.size(), dtype=deltas.dtype, layout=deltas.layout, device=deltas.device)
         pred_boxes[:, 0::4] = pred_ctr_x - 0.5 * pred_w  # x1
         pred_boxes[:, 1::4] = pred_ctr_y - 0.5 * pred_h  # y1
         pred_boxes[:, 2::4] = pred_ctr_x + 0.5 * pred_w  # x2

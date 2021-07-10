@@ -315,8 +315,7 @@ class RPN(nn.Module):
 
             if len(gt_boxes_i) == 0:
                 # These values won't be used anyway since the anchor is labeled as background
-                # matched_gt_boxes_i = torch.zeros_like(anchors.tensor)
-                matched_gt_boxes_i = torch.zeros(anchors.tensor.size())
+                matched_gt_boxes_i = torch.zeros_like(anchors.tensor)
             else:
                 # TODO wasted indexing computation for ignored boxes
                 matched_gt_boxes_i = gt_boxes_i[matched_idxs].tensor

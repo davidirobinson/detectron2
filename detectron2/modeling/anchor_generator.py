@@ -341,7 +341,7 @@ class RotatedAnchorGenerator(nn.Module):
         for size, stride, base_anchors in zip(grid_sizes, self.strides, self.cell_anchors):
             shift_x, shift_y = _create_grid_offsets(size, stride, self.offset, base_anchors.device)
             # zeros = torch.zeros_like(shift_x)
-            zeros = torch.zeros(shift_x.size())
+            zeros = torch.zeros(shift_x.size(), dtype=shift_x.dtype, layout=shift_x.layout, device=shift_x.device)
             shifts = torch.stack((shift_x, shift_y, zeros, zeros, zeros), dim=1)
 
             anchors.append((shifts.view(-1, 1, 5) + base_anchors.view(1, -1, 5)).reshape(-1, 5))
