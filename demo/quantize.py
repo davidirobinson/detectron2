@@ -69,36 +69,6 @@ def get_parser():
     return parser
 
 
-import torch
-import torchvision
-import torch.nn as nn
-import torch.nn.functional as F
-
-
-
-class GeneralizedRCNN(nn.Module):
-    def __init__(self):
-        super(GeneralizedRCNN, self).__init__()
-
-        self.network = nn.Sequential(
-            nn.Conv2d(1, 16, kernel_size=5, stride=2, padding=1),
-            nn.BatchNorm2d(16),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(16, 32, kernel_size=5, stride=2, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(64, 10, kernel_size=3, stride=3),
-            nn.BatchNorm2d(10),
-            nn.Flatten()
-            )
-    def forward(self, x):
-        x = self.network(x)
-        return x
-
-
 if __name__ == "__main__":
     mp.set_start_method("spawn", force=True)
     args = get_parser().parse_args()
@@ -108,49 +78,40 @@ if __name__ == "__main__":
 
     cfg = setup_cfg(args)
 
-    # # Do inference
-    # if args.input:
-    #     if len(args.input) == 1:
-    #         args.input = glob.glob(os.path.expanduser(args.input[0]))
-    #         assert args.input, "The input path(s) was not found"
-    #     for path in tqdm.tqdm(args.input, disable=not args.output):
-    #         # use PIL, to be consistent with evaluation
-    #         img = read_image(path, format="BGR")
-    #         start_time = time.time()
+    # Do inference
+    if False:
+        if args.input:
+            if len(args.input) == 1:
+                args.input = glob.glob(os.path.expanduser(args.input[0]))
+                assert args.input, "The input path(s) was not found"
+            for path in tqdm.tqdm(args.input, disable=not args.output):
+                # use PIL, to be consistent with evaluation
+                img = read_image(path, format="BGR")
+                start_time = time.time()
 
-    #         predictions = predictor(img)
-    #         logger.info(
-    #             "{}: {} in {:.2f}s".format(
-    #                 path,
-    #                 "detected {} instances".format(len(predictions["instances"]))
-    #                 if "instances" in predictions
-    #                 else "finished",
-    #                 time.time() - start_time,
-    #             )
-    #         )
+                predictions = predictor(img)
+                logger.info(
+                    "{}: {} in {:.2f}s".format(
+                        path,
+                        "detected {} instances".format(len(predictions["instances"]))
+                        if "instances" in predictions
+                        else "finished",
+                        time.time() - start_time,
+                    )
+                )
 
     def run_quantizer(cfg, quant_mode, device=torch.device('cuda:0')):
         # Setup model
-        # predictor = DefaultPredictor(cfg)
-        # torch_model = predictor.model
+        predictor = DefaultPredictor(cfg)
 
-        torch_model = GeneralizedRCNN().to(device)
+        channels = 3
+        height = 320
+        width = 480
 
-        # batchsize = 1
-        # channels = 3
-        # height = 320
-        # width = 480
-
-        batchsize = 1
-        channels = 1
-        height = 28
-        width = 28
-
-
-        batched_inputs = torch.randn([batchsize, channels, height, width])
+        batched_inputs = torch.randn([channels, height, width])
 
         quantizer = torch_quantizer(
-            quant_mode, torch_model, (batched_inputs), output_dir="quant_model/")
+            quant_mode, predictor.model, batched_inputs, output_dir="quant_model/")
         quantized_model = quantizer.quant_model
 
         # Evaluate / Test
@@ -163,42 +124,33 @@ if __name__ == "__main__":
                 model.eval()
                 with torch.no_grad():
                     for path in args.input:
-                        # # use PIL, to be consistent with evaluation
-                        # image = read_image(path, width, height, format="BGR")
+                        # use PIL, to be consistent with evaluation
+                        image = read_image(path, width, height, format="BGR")
 
-                        # # Apply pre-processing to image.
-                        # if cfg.INPUT.FORMAT == "RGB":
-                        #     # whether the model expects BGR inputs or RGB
-                        #     image = image[:, :, ::-1]
-                        # height, width = image.shape[:2]
-
-                        # import pdb; pdb.set_trace()
-
-                        image = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-                        image = cv2.resize(image, (width, height))
-                        image = image.reshape(28, 28, 1)
+                        # Apply pre-processing to image.
+                        if cfg.INPUT.FORMAT == "RGB":
+                            # whether the model expects BGR inputs or RGB
+                            image = image[:, :, ::-1]
 
                         image = image.astype("float32").transpose(2, 0, 1)
 
-                        # # Normalize - Vitis AI Quantizer doesn't like doing this
-                        # image = image.reshape(3, height * width)
-                        # image -= np.array(cfg.MODEL.PIXEL_MEAN).reshape(3, 1)
-                        # image /= np.array(cfg.MODEL.PIXEL_STD).reshape(3, 1)
-                        # image = image.reshape(3, height, width)
+                        # Normalize - Vitis AI Quantizer doesn't like doing this
+                        # TODO(drobinson): Handle this in the model to avoid passing these around?
+                        image = image.reshape(3, height * width)
+                        image -= np.array(cfg.MODEL.PIXEL_MEAN).reshape(3, 1)
+                        image /= np.array(cfg.MODEL.PIXEL_STD).reshape(3, 1)
+                        image = image.reshape(3, height, width)
 
                         # Convert to device
                         image = torch.as_tensor(image).to(device)
-                        image = image.reshape(1, image.shape[0], image.shape[1], image.shape[2])
 
-                        # import pdb; pdb.set_trace()
+                        # start_time = time.time()
+                        # og_result = predictor.model(image)
+                        # print("gpu elapsed:      ", time.time() - start_time, "s")
 
-                        start_time = time.time()
-
-                        # og_result = torch_model(image)
+                        # start_time = time.time()
                         result = model(image)
-
-                        print("elapsed ", time.time() - start_time, "s")
-
+                        # print("quantizer elapsed:", time.time() - start_time, "s")
 
         test(quantized_model, device, width, height)
 

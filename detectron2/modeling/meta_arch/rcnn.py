@@ -199,9 +199,10 @@ class GeneralizedRCNN(nn.Module):
         #   images = [batched_inputs]
         #   images = ImageList.from_tensors(images, self.backbone.size_divisibility)
 
-        # batched_inputs = batched_inputs.reshape(1, batched_inputs.shape[0], batched_inputs.shape[1], batched_inputs.shape[2])
+        batched_inputs = batched_inputs.reshape(
+            1, batched_inputs.shape[0], batched_inputs.shape[1], batched_inputs.shape[2])
 
-        features = self.backbone(batched_inputs) # images.tensor == batched_inputs
+        features = self.backbone(batched_inputs) # NOTE: images.tensor == batched_inputs
         return features
 
         if detected_instances is None:
