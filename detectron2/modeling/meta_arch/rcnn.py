@@ -206,15 +206,18 @@ class GeneralizedRCNN(nn.Module):
 
         if detected_instances is None:
             if self.proposal_generator:
-                proposals = self.proposal_generator(batched_inputs, features, None)
+                proposals, _ = self.proposal_generator(batched_inputs, features, None)
             else:
                 assert "proposals" in batched_inputs[0]
                 proposals = [x["proposals"].to(self.device) for x in batched_inputs]
 
-            # import pdb; pdb.set_trace()
-            return [proposal.objectness_logits for proposal in proposals[0]]
+            # return [proposal for proposal in proposals]
 
-            results, _ = self.roi_heads(images, features, proposals, None)
+            # return proposals[0].objectness_logits
+            # return [proposal.objectness_logits for proposal in proposals]
+
+            import pdb; pdb.set_trace()
+            results, _ = self.roi_heads(batched_inputs, features, proposals, None)
 
         else:
             detected_instances = [x.to(self.device) for x in detected_instances]

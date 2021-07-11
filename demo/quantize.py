@@ -148,9 +148,9 @@ if __name__ == "__main__":
                         # og_result = predictor.model(image)
                         # print("gpu elapsed:      ", time.time() - start_time, "s")
 
-                        # start_time = time.time()
+                        start_time = time.time()
                         result = model(image)
-                        # print("quantizer elapsed:", time.time() - start_time, "s")
+                        print("quantizer elapsed:", time.time() - start_time, "s")
 
         test(quantized_model, device, width, height)
 

@@ -474,8 +474,9 @@ class RPN(nn.Module):
         # The proposals are treated as fixed for approximate joint training with roi heads.
         # This approach ignores the derivative w.r.t. the proposal boxes’ coordinates that
         # are also network responses, so is approximate.
-        pred_objectness_logits = [t.detach() for t in pred_objectness_logits]
-        pred_anchor_deltas = [t.detach() for t in pred_anchor_deltas]
+        # TODO(drobinson): Some issue with xiulinx quantize and detach
+        # pred_objectness_logits = [t.detach() for t in pred_objectness_logits]
+        # pred_anchor_deltas = [t.detach() for t in pred_anchor_deltas]
         pred_proposals = self._decode_proposals(anchors, pred_anchor_deltas)
         return find_top_rpn_proposals(
             pred_proposals,
