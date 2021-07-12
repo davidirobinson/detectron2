@@ -129,15 +129,17 @@ class FPN(Backbone):
 
         for features, lateral_conv, output_conv in zip(x[1:], self.lateral_convs[1:], self.output_convs[1:]):
 
-            # TODO(drobinson): Vitis AI (xmodel step) doesn't like this interpolate function
-            # top_down_features = F.interpolate(prev_features, scale_factor=2, mode="nearest")
-            interp_shape = (prev_features.shape[2] * 2, prev_features.shape[3] * 2)
-            top_down_features = torch.zeros(interp_shape, dtype=prev_features.dtype, layout=prev_features.layout, device=prev_features.device)
+            # TODO(drobinson): Vitis AI doesn't like this interpolate function, so we need to run this function on the cpu
+            # Currently not adding as we end up with:
+            # Failed convert graph 'GeneralizedRCNN' to xmodel(Please support ops({'cast...
+            top_down_features = F.interpolate(prev_features.cpu(), scale_factor=2, mode="nearest").cuda()
 
             lateral_features = lateral_conv(features)
-            prev_features = lateral_features + top_down_features
+
+            prev_features = lateral_features # + top_down_features
+
             if self._fuse_type == "avg":
-                prev_features /= 2
+                prev_features /= 2.0
             results.insert(0, output_conv(prev_features))
 
         if self.top_block is not None:

@@ -1,10 +1,10 @@
 #!/bin/sh
 
+conda activate vitis-ai-pytorch
+
 # Need to install detecron2 from source
 #       $ python -m pip install -e detectron2
 #       $ cd detectron2/demo
-
-conda activate vitis-ai-pytorch
 
 # Run quantize script
 # NOTE(drobinson): LD_LIBRARY_PATH is set to provide access to the correct cuda library. Unsure why this works on my system.
