@@ -55,7 +55,6 @@ class FrozenBatchNorm2d(nn.Module):
             self.bias = torch.zeros(self.num_features).cuda()
 
             to_sqrt = (self.running_var + self.eps).cpu().numpy()
-            sqrted = np.sqrt(to_sqrt)
             scale = self.weight * 1 / torch.as_tensor(np.sqrt(to_sqrt).astype("float32")).cuda()
 
             # When gradients are needed, F.batch_norm will use extra memory

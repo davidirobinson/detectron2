@@ -211,12 +211,7 @@ class GeneralizedRCNN(nn.Module):
                 assert "proposals" in batched_inputs[0]
                 proposals = [x["proposals"].to(self.device) for x in batched_inputs]
 
-            # return [proposal for proposal in proposals]
 
-            # return proposals[0].objectness_logits
-            # return [proposal.objectness_logits for proposal in proposals]
-
-            import pdb; pdb.set_trace()
             results, _ = self.roi_heads(batched_inputs, features, proposals, None)
 
         else:
@@ -226,7 +221,9 @@ class GeneralizedRCNN(nn.Module):
         if do_postprocess:
             return GeneralizedRCNN._postprocess(results, batched_inputs, images.image_sizes)
         else:
-            return results
+            # import pdb; pdb.set_trace()
+            # TODO(drobinson): Convert to dict and send results
+            return results[0].scores
 
 
     def preprocess_image(self, batched_inputs):

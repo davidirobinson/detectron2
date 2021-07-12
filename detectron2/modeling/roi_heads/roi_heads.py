@@ -674,7 +674,9 @@ class StandardROIHeads(ROIHeads):
             pred_instances = self._forward_box(features, proposals)
             # During inference cascaded prediction is used: the mask and keypoints heads are only
             # applied to the top scoring box detections.
-            pred_instances = self.forward_with_given_boxes(features, pred_instances)
+
+            # NOTE(drobinson): need to work on this
+            # pred_instances = self.forward_with_given_boxes(features, pred_instances)
             return pred_instances, {}
 
     def forward_with_given_boxes(
@@ -724,7 +726,10 @@ class StandardROIHeads(ROIHeads):
             In inference, a list of `Instances`, the predicted instances.
         """
         features = [features[f] for f in self.box_in_features]
-        box_features = self.box_pooler(features, [x.proposal_boxes for x in proposals])
+
+        # TODO(drobinson): Dirty hardcode of box_features size while box_pooler unsupported
+        box_features = torch.zeros((3570, 256, 7, 7), dtype=features[0].dtype, layout=features[0].layout, device=features[0].device)
+        # box_features = self.box_pooler(features, [x.proposal_boxes for x in proposals])
         box_features = self.box_head(box_features)
         predictions = self.box_predictor(box_features)
         del box_features

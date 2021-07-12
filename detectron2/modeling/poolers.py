@@ -9,6 +9,8 @@ from torchvision.ops import RoIPool
 from detectron2.layers import ROIAlign, ROIAlignRotated, cat, nonzero_tuple
 from detectron2.structures import Boxes
 
+import numpy as np
+
 """
 To export ROIPooler to torchscript, in this file, variables that should be annotated with
 `Union[List[Boxes], List[RotatedBoxes]]` are only annotated with `List[Boxes]`.
@@ -48,7 +50,11 @@ def assign_boxes_to_levels(
             `self.min_level`, for the corresponding box (so value i means the box is at
             `self.min_level + i`).
     """
-    box_sizes = torch.sqrt(cat([boxes.area() for boxes in box_lists]))
+    # NOTE(drobinson): Can't support pytorch sqrt op
+    # box_sizes = torch.sqrt(cat([boxes.area() for boxes in box_lists]))
+    to_sqrt = (cat([boxes.area() for boxes in box_lists])).cpu().detach().numpy()
+    box_sizes = torch.as_tensor(np.sqrt(to_sqrt).astype("float32")).cuda()
+
     # Eqn.(1) in FPN paper
     level_assignments = torch.floor(
         canonical_level + torch.log2(box_sizes / canonical_box_size + 1e-8)
@@ -60,9 +66,11 @@ def assign_boxes_to_levels(
 
 
 def _fmt_box_list(box_tensor, batch_index: int):
-    repeated_index = torch.full(
-        (len(box_tensor), 1), batch_index, dtype=box_tensor.dtype, device=box_tensor.device
-    )
+    # TODO(drobinson): Can't support full op
+    # repeated_index = torch.full((len(box_tensor), 1), batch_index, dtype=box_tensor.dtype, device=box_tensor.device)
+    repeated_index = torch.zeros((len(box_tensor), 1), dtype=box_tensor.dtype, device=box_tensor.device)
+    repeated_index += batch_index
+
     return cat((repeated_index, box_tensor), dim=1)
 
 

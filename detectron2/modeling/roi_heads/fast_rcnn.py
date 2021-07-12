@@ -105,21 +105,31 @@ def fast_rcnn_inference_single_image(
     boxes = boxes.tensor.view(-1, num_bbox_reg_classes, 4)  # R x C x 4
 
     # Filter results based on detection scores
-    filter_mask = scores > score_thresh  # R x K
+    # NOTE(drobinson): Unsupported op gt
+    # filter_mask = scores > score_thresh  # R x K
+    filter_mask = scores.detach().cpu().numpy() > score_thresh
+
     # R' x 2. First column contains indices of the R predictions;
     # Second column contains indices of classes.
     filter_inds = filter_mask.nonzero()
+
+    # Convert back to torch
+    filter_mask = torch.as_tensor(filter_mask).cuda()
+    filter_inds = torch.as_tensor(filter_inds).cuda().transpose(0, 1)
+
     if num_bbox_reg_classes == 1:
         boxes = boxes[filter_inds[:, 0], 0]
     else:
         boxes = boxes[filter_mask]
     scores = scores[filter_mask]
 
-    # Apply per-class NMS
-    keep = batched_nms(boxes, scores, filter_inds[:, 1], nms_thresh)
-    if topk_per_image >= 0:
-        keep = keep[:topk_per_image]
-    boxes, scores, filter_inds = boxes[keep], scores[keep], filter_inds[keep]
+    # TODO(drobinson): Something below here is triggering
+    # aten_op 'Constant' parse failed(list index out of range)
+    # # Apply per-class NMS
+    # keep = batched_nms(boxes, scores, filter_inds[:, 1], nms_thresh)
+    # if topk_per_image >= 0:
+    #     keep = keep[:topk_per_image]
+    # boxes, scores, filter_inds = boxes[keep], scores[keep], filter_inds[keep]
 
     result = Instances(image_shape)
     result.pred_boxes = Boxes(boxes)
@@ -547,7 +557,10 @@ class FastRCNNOutputLayers(nn.Module):
         predict_boxes = self.box2box_transform.apply_deltas(
             proposal_deltas, proposal_boxes
         )  # Nx(KxB)
-        return predict_boxes.split(num_prop_per_image)
+        # import pdb; pdb.set_trace()
+        # TODO(drobinson): aten_op 'split_with_sizes' parse failed(unsupported)
+        # return predict_boxes.split(num_prop_per_image)
+        return (predict_boxes,)
 
     def predict_probs(self, predictions, proposals):
         """
@@ -563,4 +576,7 @@ class FastRCNNOutputLayers(nn.Module):
         scores, _ = predictions
         num_inst_per_image = [len(p) for p in proposals]
         probs = F.softmax(scores, dim=-1)
-        return probs.split(num_inst_per_image, dim=0)
+        # import pdb; pdb.set_trace()
+        # TODO(drobinson): aten_op 'split_with_sizes' parse failed(unsupported)
+        # return probs.split(num_inst_per_image, dim=0)
+        return (probs,)
