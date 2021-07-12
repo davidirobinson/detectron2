@@ -61,11 +61,12 @@ def find_top_rpn_proposals(
         num_proposals_i = min(pre_nms_topk, Hi_Wi_A)
 
         # sort is faster than topk (https://github.com/pytorch/pytorch/issues/22812)
+        #
+        # TODO(drobinson): torch sort is unsopported in Vitis AI, need to come up with alternative
+        # For now just keep in the same order
+        #
         # topk_scores_i, topk_idx = logits_i.topk(num_proposals_i, dim=1)
         # logits_i, idx = logits_i.sort(descending=True, dim=1)
-
-        # TODO(drobinson): Handle sort in some way!
-        # import pdb; pdb.set_trace()
         idx = torch.arange(logits_i.shape[1])
         idx = idx.reshape(1, logits_i.shape[1])
 
@@ -78,15 +79,13 @@ def find_top_rpn_proposals(
         topk_proposals.append(topk_proposals_i)
         topk_scores.append(topk_scores_i)
 
-        # TODO(drobinson): Can't support full op
-        # level_ids.append(torch.full((num_proposals_i,), level_id, dtype=torch.int64, device=device))
+        # NOTE(drobinson): Can't support torch.full op, use zeros then add offset
         ids = torch.zeros((num_proposals_i,), dtype=torch.int64, device=device)
         ids += level_id
         level_ids.append(ids)
 
     # 2. Concat all levels together
     # NOTE(drobinson): Xilinx requires cat index - (expected to be in range of [-1, 0], but got 1)
-    # topk_scores = cat(topk_scores, dim=1)
     topk_scores = cat(topk_scores, dim=-1)
     topk_proposals = cat(topk_proposals, dim=1)
     level_ids = cat(level_ids, dim=0)
@@ -114,7 +113,7 @@ def find_top_rpn_proposals(
         if keep.sum().item() != len(boxes):
             boxes, scores_per_img, lvl = boxes[keep], scores_per_img[keep], lvl[keep]
 
-        # TODO(drobinson): Non maximal suppression doesn't support max operation
+        # TODO(drobinson): Non maximal suppression doesn't support max operation, skip for now
         # keep = batched_nms(boxes.tensor, scores_per_img, lvl, nms_thresh)
         # In Detectron1, there was different behavior during training vs. testing.
         # (https://github.com/facebookresearch/Detectron/issues/459)
@@ -126,7 +125,7 @@ def find_top_rpn_proposals(
         # keep = keep[:post_nms_topk]  # keep is already sorted
 
         res = Instances(image_size)
-        # Somehow this uses the gt operator?
+        # TODO(drobinson): Somehow these 2 lines use the gt (greater than) operator, find alternative
         # res.proposal_boxes = boxes[keep]
         # res.objectness_logits = scores_per_img[keep]
         res.proposal_boxes = boxes

@@ -191,17 +191,11 @@ class Boxes:
         assert torch.isfinite(self.tensor).all(), "Box tensor contains infinite or NaN!"
         h, w = box_size
 
-        # import pdb; pdb.set_trace()
-        # TODO(drobinson): Unable to support in place clamp
+        # NOTE(drobinson): Unable to support in place clamp_ op
         self.tensor[:, 0] = self.tensor[:, 0].clamp(min=0, max=w)
         self.tensor[:, 1] = self.tensor[:, 1].clamp(min=0, max=h)
         self.tensor[:, 2] = self.tensor[:, 2].clamp(min=0, max=w)
         self.tensor[:, 3] = self.tensor[:, 3].clamp(min=0, max=h)
-
-        # self.tensor[:, 0].clamp_(min=0, max=w)
-        # self.tensor[:, 1].clamp_(min=0, max=h)
-        # self.tensor[:, 2].clamp_(min=0, max=w)
-        # self.tensor[:, 3].clamp_(min=0, max=h)
 
     def nonempty(self, threshold: float = 0.0) -> torch.Tensor:
         """

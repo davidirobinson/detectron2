@@ -17,7 +17,6 @@ from ..proposal_generator import build_proposal_generator
 from ..roi_heads import build_roi_heads
 from .build import META_ARCH_REGISTRY
 
-
 __all__ = ["GeneralizedRCNN", "ProposalNetwork"]
 
 
@@ -194,11 +193,12 @@ class GeneralizedRCNN(nn.Module):
         """
         assert not self.training
 
-        # Following code modified from:
+        # TODO(drobinson): Reimplement image preproc here, using cpu where alternatives are required
+
+        # NOTE(drobinson): Following code modified from:
         #   images = self.preprocess_image(batched_inputs) # original outer function
         #   images = [batched_inputs]
         #   images = ImageList.from_tensors(images, self.backbone.size_divisibility)
-
         batched_inputs = batched_inputs.reshape(
             1, batched_inputs.shape[0], batched_inputs.shape[1], batched_inputs.shape[2])
 
@@ -220,8 +220,8 @@ class GeneralizedRCNN(nn.Module):
         if do_postprocess:
             return GeneralizedRCNN._postprocess(results, batched_inputs, images.image_sizes)
         else:
-            # import pdb; pdb.set_trace()
-            # TODO(drobinson): Convert to dict and send results
+            # TODO(drobinson): Convert Instances object to dict and return all results
+            # This is because torch JIT can't support IO with custom objects, only lists, dicts, etc
             return results[0].scores
 
 
@@ -239,7 +239,6 @@ class GeneralizedRCNN(nn.Module):
         """
         Rescale the output instances to the target size.
         """
-
         # note: private function; subject to changes
         processed_results = []
         for results_per_image, input_per_image, image_size in zip(

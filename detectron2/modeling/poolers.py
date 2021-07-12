@@ -50,8 +50,7 @@ def assign_boxes_to_levels(
             `self.min_level`, for the corresponding box (so value i means the box is at
             `self.min_level + i`).
     """
-    # NOTE(drobinson): Can't support pytorch sqrt op
-    # box_sizes = torch.sqrt(cat([boxes.area() for boxes in box_lists]))
+    # NOTE(drobinson): Can't support pytorch sqrt op, dop on cpu instead
     to_sqrt = (cat([boxes.area() for boxes in box_lists])).cpu().detach().numpy()
     box_sizes = torch.as_tensor(np.sqrt(to_sqrt).astype("float32")).cuda()
 
@@ -66,8 +65,7 @@ def assign_boxes_to_levels(
 
 
 def _fmt_box_list(box_tensor, batch_index: int):
-    # TODO(drobinson): Can't support full op
-    # repeated_index = torch.full((len(box_tensor), 1), batch_index, dtype=box_tensor.dtype, device=box_tensor.device)
+    # NOTE(drobinson): Can't support torch.full op, use zeros then add offset
     repeated_index = torch.zeros((len(box_tensor), 1), dtype=box_tensor.dtype, device=box_tensor.device)
     repeated_index += batch_index
 

@@ -185,9 +185,8 @@ class BaseMaskRCNNHead(nn.Module):
         Returns:
             A dict of losses in training. The predicted "instances" in inference.
         """
-        # NOTE(drobinson): need to work on this
-        # aten_op 'Constant' parse failed(list index out of range)
-        # import pdb; pdb.set_trace()
+        # NOTE(drobinson): need to work on this function to support mask inference
+        # Encountering "aten_op 'Constant' parse failed(list index out of range)"
         return instances
 
         x = self.layers(x)

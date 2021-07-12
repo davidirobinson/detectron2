@@ -420,7 +420,6 @@ class RPN(nn.Module):
             loss: dict[Tensor] or None
         """
         features = [features[f] for f in self.in_features]
-
         anchors = self.anchor_generator(features)
 
         pred_objectness_logits, pred_anchor_deltas = self.rpn_head(features)
@@ -447,7 +446,7 @@ class RPN(nn.Module):
         else:
             losses = {}
 
-        # NOTE(drobinson): support only one image
+        # NOTE(drobinson): Support only one image
         image_sizes = [(images.shape[2].item(), images.shape[3].item())]
         proposals = self.predict_proposals(
             anchors, pred_objectness_logits, pred_anchor_deltas, image_sizes)
@@ -474,9 +473,13 @@ class RPN(nn.Module):
         # The proposals are treated as fixed for approximate joint training with roi heads.
         # This approach ignores the derivative w.r.t. the proposal boxes’ coordinates that
         # are also network responses, so is approximate.
-        # TODO(drobinson): Some issue with xiulinx quantize and detach
-        # pred_objectness_logits = [t.detach() for t in pred_objectness_logits]
-        # pred_anchor_deltas = [t.detach() for t in pred_anchor_deltas]
+
+        # TODO(drobinson): There seems to be some issue with xilinx quantize and detach
+        # Therefore leave as is, keeping gradients won't afftect result
+        if False:
+            pred_objectness_logits = [t.detach() for t in pred_objectness_logits]
+            pred_anchor_deltas = [t.detach() for t in pred_anchor_deltas]
+
         pred_proposals = self._decode_proposals(anchors, pred_anchor_deltas)
         return find_top_rpn_proposals(
             pred_proposals,
