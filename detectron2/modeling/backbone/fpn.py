@@ -122,7 +122,6 @@ class FPN(Backbone):
         """
         # Reverse feature maps into top-down order (from low to high resolution)
         bottom_up_features = self.bottom_up(x)
-
         x = [bottom_up_features[f] for f in self.in_features[::-1]]
         results = []
         prev_features = self.lateral_convs[0](x[0])
@@ -130,16 +129,13 @@ class FPN(Backbone):
 
         for features, lateral_conv, output_conv in zip(x[1:], self.lateral_convs[1:], self.output_convs[1:]):
 
-            # TODO(drobinson): xmodel doesn't like this interpolate function
+            # TODO(drobinson): Vitis AI (xmodel step) doesn't like this interpolate function
             # top_down_features = F.interpolate(prev_features, scale_factor=2, mode="nearest")
-
             interp_shape = (prev_features.shape[2] * 2, prev_features.shape[3] * 2)
-            top_down_features = F.interpolate(prev_features, size=interp_shape, mode="nearest")
+            top_down_features = torch.zeros(interp_shape, dtype=prev_features.dtype, layout=prev_features.layout, device=prev_features.device)
 
             lateral_features = lateral_conv(features)
-
-            prev_features = lateral_features # + top_down_features
-
+            prev_features = lateral_features + top_down_features
             if self._fuse_type == "avg":
                 prev_features /= 2
             results.insert(0, output_conv(prev_features))

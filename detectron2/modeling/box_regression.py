@@ -102,6 +102,7 @@ class Box2BoxTransform(object):
         pred_w = torch.exp(dw) * widths[:, None]
         pred_h = torch.exp(dh) * heights[:, None]
 
+        # NOTE(drobinson): zeros_like is an unsupported op with Vitis AI
         pred_boxes = torch.zeros(deltas.size(), dtype=deltas.dtype, layout=deltas.layout, device=deltas.device)
         pred_boxes[:, 0::4] = pred_ctr_x - 0.5 * pred_w  # x1
         pred_boxes[:, 1::4] = pred_ctr_y - 0.5 * pred_h  # y1
