@@ -1,11 +1,10 @@
 #!/bin/sh
 
-# set -e
+# Need to install detecron2 from source
+#       $ python -m pip install -e detectron2
+#       $ cd detectron2/demo
 
 conda activate vitis-ai-pytorch
-
-# # python -m pip install -e detectron2
-# # cd detectron2/demo
 
 LD_LIBRARY_PATH=/opt/vitis_ai/conda/envs/vitis-ai-tensorflow2/lib/ python quantize.py  \
     --config-file ../configs/COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml \
@@ -20,9 +19,5 @@ source compile.sh zcu104 GeneralizedRCNN
 # Make target folders
 cp compiled_model/GeneralizedRCNN_zcu104.xmodel target/
 
-# Deploy
+# Deploy (follow these instructions to setup static ips: https://linbaiwpi.github.io/post/zcu104_tutorial_2.html)
 scp -r target/ root@192.168.1.22:~/
-
-# # Run locally
-# cd target
-# python3 app_mt.py

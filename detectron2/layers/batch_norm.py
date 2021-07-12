@@ -10,9 +10,7 @@ from detectron2.utils import comm, env
 
 from .wrappers import BatchNorm2d
 
-# Temporary fix!
 import numpy as np
-
 
 class FrozenBatchNorm2d(nn.Module):
     """
@@ -47,13 +45,15 @@ class FrozenBatchNorm2d(nn.Module):
 
 
     def forward(self, x):
-        # TODO(drobinson): deal with this
+        # TODO(drobinson): This needs some attention / revisiting. I was running into issues porting
+        # The section of code which requires
         if False: # x.requires_grad:
             self.running_mean = torch.zeros(self.num_features).cuda()
             self.running_var = (torch.ones(self.num_features) - self.eps).cuda()
             self.weight = torch.ones(self.num_features).cuda()
             self.bias = torch.zeros(self.num_features).cuda()
 
+            # NOTE(drobinson): Perform sqrt on cpu, unsupported by Vitis AI
             to_sqrt = (self.running_var + self.eps).cpu().numpy()
             scale = self.weight * 1 / torch.as_tensor(np.sqrt(to_sqrt).astype("float32")).cuda()
 
@@ -65,7 +65,6 @@ class FrozenBatchNorm2d(nn.Module):
             bias = bias.reshape(1, -1, 1, 1)
             return x * scale + bias
         else:
-
             # When gradients are not needed, F.batch_norm is a single fused op
             # and provide more optimization opportunities.
             return F.batch_norm(

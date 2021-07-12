@@ -159,7 +159,7 @@ def _apply_exif_orientation(image):
     return image
 
 
-def read_image(file_name, width, height, format=None):
+def read_image(file_name, format=None):
     """
     Read an image into the given format.
     Will apply rotation and flipping if the image has such exif information.
@@ -174,8 +174,6 @@ def read_image(file_name, width, height, format=None):
     """
     with PathManager.open(file_name, "rb") as f:
         image = Image.open(f)
-
-        image = image.resize((width, height))
 
         # work around this bug: https://github.com/python-pillow/Pillow/issues/3973
         image = _apply_exif_orientation(image)

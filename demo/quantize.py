@@ -124,18 +124,18 @@ if __name__ == "__main__":
                 model.eval()
                 with torch.no_grad():
                     for path in args.input:
-                        # use PIL, to be consistent with evaluation
-                        image = read_image(path, width, height, format="BGR")
-
-                        # Apply pre-processing to image.
+                        # Load image for inference
+                        image = cv2.imread(path) # Load in BGR format
+                        assert image.shape[-1] == 3
                         if cfg.INPUT.FORMAT == "RGB":
                             # whether the model expects BGR inputs or RGB
                             image = image[:, :, ::-1]
 
+                        # Apply pre-processing to image.
+                        image = cv2.resize(image, (width, height))
                         image = image.astype("float32").transpose(2, 0, 1)
 
-                        # Normalize - Vitis AI Quantizer doesn't like doing this
-                        # TODO(drobinson): Handle this in the model to avoid passing these around?
+                        # TODO(drobinson): Handle this in the model
                         image = image.reshape(3, height * width)
                         image -= np.array(cfg.MODEL.PIXEL_MEAN).reshape(3, 1)
                         image /= np.array(cfg.MODEL.PIXEL_STD).reshape(3, 1)
@@ -144,9 +144,10 @@ if __name__ == "__main__":
                         # Convert to device
                         image = torch.as_tensor(image).to(device)
 
-                        # start_time = time.time()
-                        # og_result = predictor.model(image)
-                        # print("gpu elapsed:      ", time.time() - start_time, "s")
+                        if False:
+                            start_time = time.time()
+                            og_result = predictor.model(image)
+                            print("gpu elapsed:      ", time.time() - start_time, "s")
 
                         start_time = time.time()
                         result = model(image)

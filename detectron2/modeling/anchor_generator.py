@@ -36,13 +36,11 @@ class BufferList(nn.Module):
 
 def _create_grid_offsets(size: List[int], stride: int, offset: float, device: torch.device):
     # TODO(drobinson): aten_op 'ImplicitTensorToNum' parse failed(unsupported)
-
     empt = torch.empty(size[0] * size[1], dtype=torch.float32, device=device)
     return empt, empt
 
     grid_height, grid_width = size
 
-    # ?
     shifts_x = torch.arange(
         offset * stride, grid_width * stride, step=stride, dtype=torch.float32, device=device
     )
@@ -50,13 +48,9 @@ def _create_grid_offsets(size: List[int], stride: int, offset: float, device: to
         offset * stride, grid_height * stride, step=stride, dtype=torch.float32, device=device
     )
 
-    # ?
     shift_y, shift_x = torch.meshgrid(shifts_y, shifts_x)
     shift_x = shift_x.reshape(-1)
     shift_y = shift_y.reshape(-1)
-
-    import pdb; pdb.set_trace()
-
     return shift_x, shift_y
 
 
@@ -142,7 +136,7 @@ class DefaultAnchorGenerator(nn.Module):
         cell_anchors = [
             self.generate_cell_anchors(s, a).float() for s, a in zip(sizes, aspect_ratios)
         ]
-        # return BufferList(cell_anchors)
+        # NOTE(drobinson): Vitis AI doesn't support member buffers
         return cell_anchors
 
     @property
@@ -173,10 +167,7 @@ class DefaultAnchorGenerator(nn.Module):
         """
         anchors = []
 
-        # TODO(drobinson)
-        # buffers() not supported by torchscript. use named_buffers() instead
-        # buffers: List[torch.Tensor] = [x[1] for x in self.cell_anchors.named_buffers()]
-
+        # TODO(drobinson): not supported by Vitis AI, hardcode for now - needs a better solution
         buffers = [torch.tensor([[-22.6274, -11.3137,  22.6274,  11.3137],
         [-16.0000, -16.0000,  16.0000,  16.0000],
         [-11.3137, -22.6274,  11.3137,  22.6274]], device='cuda:0'), torch.tensor([[-45.2548, -22.6274,  45.2548,  22.6274],
@@ -196,7 +187,6 @@ class DefaultAnchorGenerator(nn.Module):
             anchors.append((shifts.view(-1, 1, 4) + base_anchors.view(1, -1, 4)).reshape(-1, 4))
 
         return anchors
-
 
     def generate_cell_anchors(self, sizes=(32, 64, 128, 256, 512), aspect_ratios=(0.5, 1, 2)):
         """
@@ -246,7 +236,6 @@ class DefaultAnchorGenerator(nn.Module):
                 The number of anchors of each feature map is Hi x Wi x num_cell_anchors,
                 where Hi, Wi are resolution of the feature map divided by anchor stride.
         """
-
         grid_sizes = [feature_map.shape[-2:] for feature_map in features]
         anchors_over_all_feature_maps = self._grid_anchors(grid_sizes)
         return [Boxes(x) for x in anchors_over_all_feature_maps]
@@ -340,7 +329,7 @@ class RotatedAnchorGenerator(nn.Module):
         anchors = []
         for size, stride, base_anchors in zip(grid_sizes, self.strides, self.cell_anchors):
             shift_x, shift_y = _create_grid_offsets(size, stride, self.offset, base_anchors.device)
-            # zeros = torch.zeros_like(shift_x)
+            # NOTE(drobinson): zeros_like is an unsupported op with Vitis AI
             zeros = torch.zeros(shift_x.size(), dtype=shift_x.dtype, layout=shift_x.layout, device=shift_x.device)
             shifts = torch.stack((shift_x, shift_y, zeros, zeros, zeros), dim=1)
 
