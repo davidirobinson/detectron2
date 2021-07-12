@@ -2,8 +2,6 @@
 from torch import nn
 from torchvision.ops import roi_align as tv_roi_align
 
-import torch
-
 try:
     from torchvision import __version__
 
@@ -104,13 +102,10 @@ class ROIAlign(nn.Module):
             input: NCHW images
             rois: Bx5 boxes. First column is the index into N. The other 4 columns are xyxy.
         """
-        # TODO(drobinson): need to support roi align, could use cutom impl?
-        return torch.zeros((len(rois), input.shape[1].item(), self.output_size[0], self.output_size[1]), dtype=input.dtype, layout=input.layout, device=input.device)
-
         assert rois.dim() == 2 and rois.size(1) == 5
-        return roi_align(
-            input, rois, self.output_size, self.spatial_scale, self.sampling_ratio, self.aligned)
 
+        # NOTE(drobinson): Directly use roi align function
+        return _C.roi_align_forward(input, rois, self.spatial_scale, self.output_size[0], self.output_size[1], self.sampling_ratio, self.aligned)
 
     def __repr__(self):
         tmpstr = self.__class__.__name__ + "("
