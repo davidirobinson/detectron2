@@ -1,6 +1,6 @@
 compiled_model/
 quant_model/
-target/
+GeneralizedRCNN_zcu104.xmodel
 environment.yml
 
 # output dir

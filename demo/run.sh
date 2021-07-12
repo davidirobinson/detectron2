@@ -6,6 +6,8 @@
 
 conda activate vitis-ai-pytorch
 
+# Run quantize script
+# NOTE(drobinson): LD_LIBRARY_PATH is set to provide access to the correct cuda library. Unsure why this works on my system.
 LD_LIBRARY_PATH=/opt/vitis_ai/conda/envs/vitis-ai-tensorflow2/lib/ python quantize.py  \
     --config-file ../configs/COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml \
     --input target/images/test_01.jpg target/images/test_02.jpg target/images/test_03.jpg target/images/test_04.jpg target/images/test_05.jpg \

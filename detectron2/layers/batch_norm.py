@@ -43,13 +43,12 @@ class FrozenBatchNorm2d(nn.Module):
         self.register_buffer("running_mean", torch.zeros(num_features))
         self.register_buffer("running_var", torch.ones(num_features) - eps)
 
-
     def forward(self, x):
-        # TODO(drobinson): This needs some attention / revisiting. I was running into issues porting
-        # The section of code which requires
-        if False: # x.requires_grad:
+        if x.requires_grad:
+            # TODO(drobinson): The following members cannot be buffers as Vitis AI doesn't like this
+            # Note that it seems we can use buffer on the CPU (self.running_var) so this could be a workaround
+            # Also, perhaps we can always use F.batch_norm( as gradients shouldn't be needed for inference?
             self.running_mean = torch.zeros(self.num_features).cuda()
-            self.running_var = (torch.ones(self.num_features) - self.eps).cuda()
             self.weight = torch.ones(self.num_features).cuda()
             self.bias = torch.zeros(self.num_features).cuda()
 
@@ -59,7 +58,6 @@ class FrozenBatchNorm2d(nn.Module):
 
             # When gradients are needed, F.batch_norm will use extra memory
             # because its backward op computes gradients for weight/bias as well.
-            # scale = self.weight * (self.running_var + self.eps).rsqrt()
             bias = self.bias - self.running_mean * scale
             scale = scale.reshape(1, -1, 1, 1)
             bias = bias.reshape(1, -1, 1, 1)
