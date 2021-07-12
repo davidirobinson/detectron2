@@ -185,6 +185,11 @@ class BaseMaskRCNNHead(nn.Module):
         Returns:
             A dict of losses in training. The predicted "instances" in inference.
         """
+        # NOTE(drobinson): need to work on this
+        # aten_op 'Constant' parse failed(list index out of range)
+        # import pdb; pdb.set_trace()
+        return instances
+
         x = self.layers(x)
         if self.training:
             return {"loss_mask": mask_rcnn_loss(x, instances, self.vis_period)}
