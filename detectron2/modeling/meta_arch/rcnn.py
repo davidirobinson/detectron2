@@ -211,8 +211,6 @@ class GeneralizedRCNN(nn.Module):
                 assert "proposals" in batched_inputs[0]
                 proposals = [x["proposals"].to(self.device) for x in batched_inputs]
 
-            return proposals[0].area() # [0].objectness_logits
-
             results, _ = self.roi_heads(batched_inputs, features, proposals, None)
 
         else:

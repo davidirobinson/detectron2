@@ -3,7 +3,7 @@
 conda activate vitis-ai-pytorch
 
 # Need to install detecron2 from source
-#       $ python -m pip install -e detectron2
+#       $ python3 -m pip install -e detectron2
 #       $ cd detectron2/demo
 
 # Run quantize script

@@ -4,6 +4,8 @@ from typing import List
 import torch
 from torch import nn
 
+import numpy as np
+
 from detectron2.config import configurable
 from detectron2.layers import ShapeSpec
 from detectron2.structures import Boxes, RotatedBoxes
@@ -38,21 +40,21 @@ def _create_grid_offsets(size: List[int], stride: int, offset: float, device: to
 
     grid_height, grid_width = size
 
-    # Overwrite device
-    device = torch.device('cpu')
+    shifts_x = torch.arange(
+        offset * stride, grid_width * stride, step=stride, dtype=torch.float32, device=device
+    )
+    shifts_y = torch.arange(
+        offset * stride, grid_height * stride, step=stride, dtype=torch.float32, device=device
+    )
 
-    # import pdb; pdb.set_trace()
-    shifts_x = torch.arange(offset * stride, grid_width * stride, step=stride, dtype=torch.float32, device=device)
-    shifts_y = torch.arange(offset * stride, grid_height * stride, step=stride, dtype=torch.float32, device=device)
+    # NOTE(drobinson): replaced torch meshgrid with np as: aten_op 'ImplicitTensorToNum' parse failed(unsupported)
+    np_shift_y, np_shift_x = np.meshgrid(shifts_y.cpu().numpy(), shifts_x.cpu().numpy())
+    shift_x = torch.as_tensor(np_shift_x, device=device)
+    shift_y = torch.as_tensor(np_shift_y, device=device)
 
-    # TODO(drobinson): aten_op 'ImplicitTensorToNum' parse failed(unsupported)
-    # empt = torch.zeros(torch.tensor(shifts_y.size()) * torch.tensor(shifts_x.size()), dtype=torch.float32, device=device)
-    # return empt, empt
-
-    shift_y, shift_x = torch.meshgrid(shifts_y, shifts_x)
     shift_x = shift_x.reshape(-1)
     shift_y = shift_y.reshape(-1)
-    return shift_x.cuda(), shift_y.cuda()
+    return shift_x, shift_y
 
 
 def _broadcast_params(params, num_features, name):
