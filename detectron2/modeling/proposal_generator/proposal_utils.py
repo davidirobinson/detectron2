@@ -72,6 +72,7 @@ def find_top_rpn_proposals(
         # idx = torch.arange(logits_i.shape[1])
         # idx = idx.reshape(1, logits_i.shape[1])
 
+        # TODO(drobinson): Converting logits_i to cpu causes Vitis AI issue for some reason
         idx = np.argsort(logits_i.cpu().detach()).numpy()
         idx = idx[:,::-1]
         # logits_cpu = logits_i.cpu().detach().numpy()

@@ -96,6 +96,7 @@ class StandardRPNHead(nn.Module):
         # 1x1 conv for predicting box2box transform deltas
         self.anchor_deltas = nn.Conv2d(in_channels, num_anchors * box_dim, kernel_size=1, stride=1)
 
+        # TODO(drobinson): Use list like below -> this doesn't work with Vitis for an unknown reason
         # for i in range(5):
         #     conv_tmp = nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=1, padding=1)
         #     objectness_logits_tmp = nn.Conv2d(in_channels, num_anchors, kernel_size=1, stride=1)
@@ -159,9 +160,6 @@ class StandardRPNHead(nn.Module):
         assert (
             len(set(num_anchors)) == 1
         ), "Each level must have the same number of anchors per spatial position"
-
-        print("here I am!")
-
         return {"in_channels": in_channels, "num_anchors": num_anchors[0], "box_dim": box_dim}
 
     def forward(self, features: List[torch.Tensor]):
@@ -185,6 +183,7 @@ class StandardRPNHead(nn.Module):
         assert len(features) == 5
 
         # TODO(drobinson): Will need to copy weights during init, not inference!
+        # TODO(drobinson): Use list like below -> this doesn't work with Vitis for an unknown reason
         # for i in range(len(features)):
         #     self.conv_list[i] = copy.deepcopy(self.conv)
         #     self.objectness_logits_list[i] = copy.deepcopy(self.objectness_logits)
@@ -213,11 +212,6 @@ class StandardRPNHead(nn.Module):
         t_5 = F.relu(self.conv_5(features[4]))
         pred_objectness_logits.append(self.objectness_logits_5(t_5))
         pred_anchor_deltas.append(self.anchor_deltas_5(t_5))
-
-        # for x in features:
-        #     t = F.relu(self.conv(x))
-        #     pred_objectness_logits.append(self.objectness_logits(t))
-        #     pred_anchor_deltas.append(self.anchor_deltas(t))
 
         return pred_objectness_logits, pred_anchor_deltas
 
@@ -519,8 +513,6 @@ class RPN(nn.Module):
             .flatten(1, -2)
             for x in pred_anchor_deltas
         ]
-
-        return pred_objectness_logits, pred_anchor_deltas
 
         if self.training:
             assert gt_instances is not None, "RPN requires gt_instances in training!"
