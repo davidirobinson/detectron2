@@ -4,6 +4,8 @@ import math
 from typing import List, Tuple
 import torch
 
+import numpy as np
+
 from detectron2.layers import batched_nms, cat
 from detectron2.structures import Boxes, Instances
 
@@ -62,13 +64,21 @@ def find_top_rpn_proposals(
 
         # sort is faster than topk (https://github.com/pytorch/pytorch/issues/22812)
         #
-        # TODO(drobinson): torch sort is unsopported in Vitis AI, need to come up with alternative
+        # TODO(drobinson): torch sort is unsupported in Vitis AI, need to come up with alternative
         # For now just keep in the same order
         #
-        # topk_scores_i, topk_idx = logits_i.topk(num_proposals_i, dim=1)
-        # logits_i, idx = logits_i.sort(descending=True, dim=1)
-        idx = torch.arange(logits_i.shape[1])
-        idx = idx.reshape(1, logits_i.shape[1])
+        # og_topk_scores_i, og_topk_idx = logits_i.topk(num_proposals_i, dim=1)
+        # logits_i, _idx = logits_i.sort(descending=True, dim=1)
+        # idx = torch.arange(logits_i.shape[1])
+        # idx = idx.reshape(1, logits_i.shape[1])
+
+        idx = np.argsort(logits_i.cpu().detach()).numpy()
+        idx = idx[:,::-1]
+        # logits_cpu = logits_i.cpu().detach().numpy()
+        # logits_cpu = np.take_along_axis(logits_cpu, idx, axis=-1)
+        idx = torch.tensor(idx.copy()).cuda()
+        # logits_i = torch.tensor(logits_cpu).cuda()
+        # import pdb; pdb.set_trace() # converting to and from numpy has issues?
 
         topk_scores_i = logits_i[batch_idx, :num_proposals_i]
         topk_idx = idx[batch_idx, :num_proposals_i]
