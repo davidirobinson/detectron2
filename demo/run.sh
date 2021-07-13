@@ -22,4 +22,4 @@ source compile.sh zcu104 GeneralizedRCNN
 cp compiled_model/GeneralizedRCNN_zcu104.xmodel target/
 
 # Deploy (follow these instructions to setup static ips: https://linbaiwpi.github.io/post/zcu104_tutorial_2.html)
-scp -r target/ root@192.168.1.22:~/
+scp -r target/ root@192.168.1.22:~/ #pw: root
