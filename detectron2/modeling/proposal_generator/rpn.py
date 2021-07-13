@@ -585,8 +585,11 @@ class RPN(nn.Module):
             B = anchors_i.tensor.size(1)
             pred_anchor_deltas_i = pred_anchor_deltas_i.reshape(-1, B)
             # Expand anchors to shape (N*Hi*Wi*A, B)
-            anchors_i = anchors_i.tensor.unsqueeze(0).expand(N, -1, -1).reshape(-1, B)
+            # NOTE(drobinson): removed "anchors_i.tensor.unsqueeze(0).expand(N, -1, -1).reshape(-1, B)"
+            anchors_i = anchors_i.tensor
             proposals_i = self.box2box_transform.apply_deltas(pred_anchor_deltas_i, anchors_i)
             # Append feature map proposals with shape (N, Hi*Wi*A, B)
-            proposals.append(proposals_i.view(N, -1, B))
+            # NOTE(drobinson): Assuming N = 1 here, as the view call causes errors with Vitis AI
+            # proposals.append(proposals_i.view(N, -1, B))
+            proposals.append(proposals_i.unsqueeze(0))
         return proposals

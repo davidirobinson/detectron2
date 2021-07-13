@@ -104,6 +104,8 @@ if __name__ == "__main__":
         # Setup model
         predictor = DefaultPredictor(cfg)
 
+        # TODO(drobinson): Support larger image sizes. Note that currently the networks
+        # must be divisible by the network's self.backbone.size_divisibility parameter
         channels = 3
         height = 320
         width = 480
@@ -111,7 +113,11 @@ if __name__ == "__main__":
         batched_inputs = torch.randn([channels, height, width])
 
         quantizer = torch_quantizer(
-            quant_mode, predictor.model, batched_inputs, output_dir="quant_model/")
+            quant_mode=quant_mode,
+            module=predictor.model,
+            input_args=batched_inputs,
+            output_dir="quant_model/",
+            bitwidth=8)
         quantized_model = quantizer.quant_model
 
         # Evaluate / Test

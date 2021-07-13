@@ -2,6 +2,7 @@
 import math
 from typing import Tuple
 import torch
+import numpy as np
 
 # Value for clamping large dw and dh predictions. The heuristic is that we clamp
 # such that dw and dh are no larger than what would transform a 16px box into a
@@ -12,7 +13,7 @@ _DEFAULT_SCALE_CLAMP = math.log(1000.0 / 16)
 __all__ = ["Box2BoxTransform", "Box2BoxTransformRotated"]
 
 
-@torch.jit.script
+# @torch.jit.script
 class Box2BoxTransform(object):
     """
     The box-to-box transform defined in R-CNN. The transformation is parameterized
@@ -70,7 +71,7 @@ class Box2BoxTransform(object):
         assert (src_widths > 0).all().item(), "Input boxes to Box2BoxTransform are not valid!"
         return deltas
 
-    def apply_deltas(self, deltas, boxes):
+    def apply_deltas(self, deltas_tensor, boxes_tensor):
         """
         Apply transformation `deltas` (dx, dy, dw, dh) to `boxes`.
 
@@ -80,7 +81,9 @@ class Box2BoxTransform(object):
                 box transformations for the single box boxes[i].
             boxes (Tensor): boxes to transform, of shape (N, 4)
         """
-        boxes = boxes.to(deltas.dtype)
+
+        deltas = deltas_tensor.cpu().detach().numpy()
+        boxes = boxes_tensor.cpu().detach().numpy()
 
         widths = boxes[:, 2] - boxes[:, 0]
         heights = boxes[:, 3] - boxes[:, 1]
@@ -94,21 +97,21 @@ class Box2BoxTransform(object):
         dh = deltas[:, 3::4] / wh
 
         # Prevent sending too large values into torch.exp()
-        dw = torch.clamp(dw, max=self.scale_clamp)
-        dh = torch.clamp(dh, max=self.scale_clamp)
+        # dw = np.clamp(dw, max=self.scale_clamp)
+        # dh = np.clamp(dh, max=self.scale_clamp)
 
         pred_ctr_x = dx * widths[:, None] + ctr_x[:, None]
         pred_ctr_y = dy * heights[:, None] + ctr_y[:, None]
-        pred_w = torch.exp(dw) * widths[:, None]
-        pred_h = torch.exp(dh) * heights[:, None]
+        pred_w = np.exp(dw) * widths[:, None]
+        pred_h = np.exp(dh) * heights[:, None]
 
         # NOTE(drobinson): zeros_like is an unsupported op with Vitis AI
-        pred_boxes = torch.zeros(deltas.size(), dtype=deltas.dtype, layout=deltas.layout, device=deltas.device)
+        pred_boxes = np.zeros(deltas.shape) # torch.zeros(deltas.size(), dtype=deltas.dtype, layout=deltas.layout, device=deltas.device)
         pred_boxes[:, 0::4] = pred_ctr_x - 0.5 * pred_w  # x1
         pred_boxes[:, 1::4] = pred_ctr_y - 0.5 * pred_h  # y1
         pred_boxes[:, 2::4] = pred_ctr_x + 0.5 * pred_w  # x2
         pred_boxes[:, 3::4] = pred_ctr_y + 0.5 * pred_h  # y2
-        return pred_boxes
+        return torch.from_numpy(pred_boxes).to(deltas_tensor.device)
 
 
 @torch.jit.script
@@ -186,7 +189,9 @@ class Box2BoxTransformRotated(object):
         """
         assert deltas.shape[1] % 5 == 0 and boxes.shape[1] == 5
 
-        boxes = boxes.to(deltas.dtype).unsqueeze(2)
+        # boxes = boxes.to(deltas.dtype).unsqueeze(2)
+
+        # import pdb; pdb.set_trace()
 
         ctr_x = boxes[:, 0]
         ctr_y = boxes[:, 1]
